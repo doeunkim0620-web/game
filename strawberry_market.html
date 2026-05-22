@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍓 딸기 마켓</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FFF5F7;color:#222;min-height:100vh;}
+.screen{display:none;padding:1.5rem;max-width:480px;margin:0 auto;}
+.screen.active{display:block;}
+h1{font-size:22px;font-weight:600;margin-bottom:.5rem;}
+h3{font-size:15px;font-weight:600;}
+p{color:#888;font-size:14px;line-height:1.6;}
+.card{background:#fff;border:1px solid #F2C4D0;border-radius:16px;padding:1rem 1.25rem;margin-bottom:.75rem;box-shadow:0 1px 4px rgba(212,83,126,.06);}
+input[type=text],input[type=number],input[type=password]{width:100%;padding:10px 14px;border:1px solid #F2C4D0;border-radius:10px;background:#FFF5F7;color:#222;font-size:15px;margin-top:4px;font-family:inherit;outline:none;}
+input:focus{border-color:#D4537E;}
+select{width:100%;padding:10px 14px;border:1px solid #F2C4D0;border-radius:10px;background:#FFF5F7;color:#222;font-size:14px;margin-top:4px;font-family:inherit;outline:none;}
+.btn{display:inline-block;padding:10px 20px;border:1.5px solid #ddd;border-radius:10px;background:#fff;color:#444;font-size:14px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn:hover{background:#f5f5f5;}
+.btn-pink{background:#D4537E;color:#fff;border-color:#D4537E;font-weight:600;}
+.btn-pink:hover{background:#b83e66;border-color:#b83e66;}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:8px;}
+.btn-danger{color:#c0392b;border-color:#c0392b;background:#fff;}
+.btn-danger:hover{background:#fff0f0;}
+.badge{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:600;}
+.badge-pink{background:#FBEAF0;color:#993556;}
+.badge-gray{background:#f0f0f0;color:#888;}
+.row{display:flex;gap:8px;align-items:center;}
+.row-between{display:flex;justify-content:space-between;align-items:center;}
+.money{font-size:17px;font-weight:700;color:#2e7d32;}
+.item-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #fce4ec;}
+.item-row:last-child{border-bottom:none;}
+.label{font-size:13px;color:#aaa;margin-bottom:2px;}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#D4537E;color:#fff;padding:10px 24px;border-radius:999px;font-size:13px;display:none;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.15);}
+.seller-card{background:#fff;border:1px solid #F2C4D0;border-radius:14px;padding:.85rem 1rem;margin-bottom:.6rem;}
+.tab-bar{display:flex;gap:6px;margin-bottom:1rem;}
+.tab{flex:1;padding:8px;text-align:center;border:1.5px solid #F2C4D0;border-radius:10px;font-size:13px;cursor:pointer;color:#aaa;background:#fff;}
+.tab.active{background:#FBEAF0;color:#993556;border-color:#D4537E;font-weight:600;}
+.admin-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #fce4ec;font-size:14px;}
+.admin-row:last-child{border-bottom:none;}
+#chat-box{height:160px;overflow-y:auto;background:#FFF5F7;border-radius:10px;padding:10px;margin-bottom:8px;}
+.chat-msg{font-size:13px;padding:2px 0;color:#666;}
+.chat-msg .who{font-weight:600;color:#333;}
+.logo-area{text-align:center;padding:2.5rem 0 1.5rem;}
+.logo-area .emoji{font-size:48px;margin-bottom:.5rem;}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div id="s-login" class="screen active">
+  <div class="logo-area">
+    <div class="emoji">🍓</div>
+    <h1>딸기 마켓</h1>
+    <p>비밀번호로 입장하세요</p>
+  </div>
+  <div class="card">
+    <div class="label">비밀번호</div>
+    <input type="password" id="pw-input" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <div id="pw-error" style="font-size:12px;color:#c0392b;margin-top:6px;display:none;">❌ 비밀번호가 틀렸어요</div>
+  </div>
+  <button class="btn btn-pink" style="width:100%;font-size:16px;" onclick="doLogin()">입장하기 🍓</button>
+  <div id="login-status" style="text-align:center;font-size:12px;color:#aaa;margin-top:10px;"></div>
+</div>
+
+<div id="s-main" class="screen">
+  <div class="row-between" style="margin-bottom:1rem;">
+    <span id="user-badge" class="badge badge-pink"></span>
+    <span class="money" id="my-money-top"></span>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" id="tab-market" onclick="switchTab('market')">🛒 마켓</div>
+    <div class="tab" id="tab-myshop" onclick="switchTab('myshop')">🏪 내 가게</div>
+    <div class="tab" id="tab-chat" onclick="switchTab('chat')">💬 채팅</div>
+    <div class="tab" id="tab-admin" style="display:none;" onclick="switchTab('admin')">👑 관리</div>
+  </div>
+
+  <div id="tab-market-content">
+    <div id="market-list"><p style="padding:.5rem 0;">로딩 중...</p></div>
+  </div>
+
+  <div id="tab-myshop-content" style="display:none;">
+    <div class="card">
+      <div class="row-between" style="margin-bottom:10px;">
+        <h3>내 상품 목록</h3>
+        <button class="btn btn-pink btn-sm" onclick="toggleAddForm()">+ 상품 추가</button>
+      </div>
+      <div id="add-form" style="display:none;margin-bottom:12px;padding:12px;background:#FFF5F7;border-radius:12px;">
+        <div class="label">상품명</div>
+        <input type="text" id="new-item-name" placeholder="예: 내 방 입장권" maxlength="20"/>
+        <div class="label" style="margin-top:10px;">가격 (🍓코인)</div>
+        <input type="number" id="new-item-price" placeholder="예: 500" min="1"/>
+        <div class="label" style="margin-top:10px;">설명 (선택)</div>
+        <input type="text" id="new-item-desc" placeholder="간단한 설명" maxlength="30"/>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn" onclick="toggleAddForm()">취소</button>
+          <button class="btn btn-pink" onclick="addItem()">등록하기</button>
+        </div>
+      </div>
+      <div id="my-shop-list"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:10px;">📦 판매 내역</h3>
+      <div id="my-sales"></div>
+    </div>
+  </div>
+
+  <div id="tab-chat-content" style="display:none;">
+    <div class="card">
+      <div id="chat-box"></div>
+      <div class="row">
+        <input type="text" id="chat-input" placeholder="메시지 입력..." style="flex:1;" onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="btn btn-pink" onclick="sendChat()">전송</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-admin-content" style="display:none;">
+    <div class="card">
+      <h3 style="margin-bottom:12px;">💰 잔액 현황</h3>
+      <div id="admin-player-list"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:10px;">코인 지급/차감</h3>
+      <div class="label">대상</div>
+      <select id="admin-target">
+        <option value="">선택하세요</option>
+        <option value="도겸">도겸</option>
+        <option value="줄리">줄리</option>
+        <option value="제이">제이</option>
+        <option value="코코">코코</option>
+        <option value="도은">도은</option>
+        <option value="ALL">전체</option>
+      </select>
+      <div class="label" style="margin-top:10px;">금액 (음수 입력 = 차감)</div>
+      <input type="number" id="admin-amount" placeholder="예: 1000 또는 -500"/>
+      <div class="label" style="margin-top:10px;">사유</div>
+      <input type="text" id="admin-reason" placeholder="예: 이벤트 보상"/>
+      <button class="btn btn-pink" style="width:100%;margin-top:12px;" onclick="adminGiveCoin()">적용하기</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:10px;">🗑 상품 강제 삭제</h3>
+      <div id="admin-items-list"></div>
+    </div>
+    <div class="card" style="border-color:#ffcdd2;">
+      <h3 style="margin-bottom:10px;color:#c0392b;">⚠️ 위험 구역</h3>
+      <button class="btn btn-danger" style="width:100%;" onclick="adminReset()">전체 초기화</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const USERS = {
+  'DGKIM5555':    {name:'도겸', emoji:'🐶'},
+  'JULEE1010':    {name:'줄리', emoji:'🐱'},
+  'JSONG7777J':   {name:'제이', emoji:'🐸'},
+  'COCOCOKIM3333':{name:'코코', emoji:'🐰'},
+  'DEKIM210210':  {name:'도은', emoji:'🍓', isAdmin:true},
+};
+const INIT_MONEY = 5000;
+let me = null;
+let db = null;
+
+firebase.initializeApp({
+  apiKey:"AIzaSyBmyTFkHbhkSPirKZxLmOm9NSsQTH4QDxc",
+  authDomain:"strawberry-market-e93e8.firebaseapp.com",
+  databaseURL:"https://strawberry-market-e93e8-default-rtdb.firebaseio.com",
+  projectId:"strawberry-market-e93e8",
+  storageBucket:"strawberry-market-e93e8.firebasestorage.app",
+  messagingSenderId:"167025981358",
+  appId:"1:167025981358:web:8c14ba90e2f77ae025ba3f"
+});
+db = firebase.database();
+
+function showToast(msg, color){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.background=color||'#D4537E'; t.style.display='block';
+  setTimeout(()=>t.style.display='none',2500);
+}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function getEmoji(name){
+  const u=Object.values(USERS).find(u=>u.name===name); return u?u.emoji:'🛍';
+}
+
+function doLogin(){
+  const pw=document.getElementById('pw-input').value.trim();
+  const user=USERS[pw];
+  if(!user){document.getElementById('pw-error').style.display='block';return;}
+  document.getElementById('pw-error').style.display='none';
+  document.getElementById('login-status').textContent='연결 중...';
+  me={...user};
+  db.ref('players/'+me.name).once('value').then(snap=>{
+    if(!snap.exists()) db.ref('players/'+me.name).set({name:me.name,emoji:me.emoji,money:INIT_MONEY,isAdmin:!!me.isAdmin});
+    document.getElementById('login-status').textContent='';
+    document.getElementById('user-badge').textContent=me.emoji+' '+me.name+(me.isAdmin?' 👑':'');
+    if(me.isAdmin) document.getElementById('tab-admin').style.display='';
+    showScreen('s-main');
+    startListeners();
+  }).catch(e=>{
+    document.getElementById('login-status').textContent='연결 오류: '+e.message;
+  });
+}
+
+function startListeners(){
+  db.ref('players/'+me.name+'/money').on('value',snap=>{
+    document.getElementById('my-money-top').textContent='🍓'+(snap.val()||0).toLocaleString();
+  });
+  db.ref('items').on('value',snap=>{
+    const v=snap.val()||{}; renderMarket(v); renderMyShop(v);
+    if(me.isAdmin) renderAdminItems(v);
+  });
+  db.ref('chat').limitToLast(50).on('value',snap=>renderChat(snap.val()||{}));
+  db.ref('players').on('value',snap=>{if(me.isAdmin)renderAdminPlayers(snap.val()||{});});
+  db.ref('sales').on('value',snap=>renderMySales(snap.val()||{}));
+}
+
+function renderMarket(items){
+  const all=Object.entries(items);
+  const list=document.getElementById('market-list');
+  if(!all.length){list.innerHTML='<p style="padding:.5rem 0;">아직 상품이 없어요 🛒</p>';return;}
+  const bySeller={};
+  all.forEach(([id,item])=>{if(!bySeller[item.seller])bySeller[item.seller]=[];bySeller[item.seller].push({id,...item});});
+  list.innerHTML=Object.entries(bySeller).map(([seller,sitems])=>`
+    <div class="seller-card">
+      <div style="font-weight:600;margin-bottom:8px;font-size:15px;">${getEmoji(seller)} ${seller}의 가게</div>
+      ${sitems.map(item=>`
+        <div class="item-row">
+          <div>
+            <div style="font-size:14px;font-weight:600;">${item.name}</div>
+            ${item.desc?`<div style="font-size:12px;color:#aaa;">${item.desc}</div>`:''}
+          </div>
+          <div class="row">
+            <span style="font-weight:700;color:#D4537E;">🍓${item.price.toLocaleString()}</span>
+            ${item.seller!==me.name
+              ?`<button class="btn btn-pink btn-sm" onclick="buyItem('${item.id}','${item.seller}',${item.price},'${item.name}')">구매</button>`
+              :'<span class="badge badge-gray">내꺼</span>'}
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function renderMyShop(items){
+  const mine=Object.entries(items).filter(([id,item])=>item.seller===me.name);
+  const div=document.getElementById('my-shop-list');
+  if(!mine.length){div.innerHTML='<p style="padding:.5rem 0;">등록된 상품이 없어요</p>';return;}
+  div.innerHTML=mine.map(([id,item])=>`
+    <div class="item-row">
+      <div>
+        <div style="font-size:14px;font-weight:600;">${item.name}</div>
+        ${item.desc?`<div style="font-size:12px;color:#aaa;">${item.desc}</div>`:''}
+      </div>
+      <div class="row">
+        <span style="color:#D4537E;font-weight:700;">🍓${item.price.toLocaleString()}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteItem('${id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderMySales(sales){
+  const mine=Object.values(sales||{}).filter(s=>s.seller===me.name);
+  const div=document.getElementById('my-sales');
+  if(!mine.length){div.innerHTML='<p style="padding:.5rem 0;">아직 판매 내역이 없어요</p>';return;}
+  div.innerHTML=mine.slice(-10).reverse().map(s=>`
+    <div class="item-row">
+      <span>${getEmoji(s.buyer)} ${s.buyer}님 — ${s.item}</span>
+      <span class="money" style="font-size:14px;">+🍓${s.price.toLocaleString()}</span>
+    </div>`).join('');
+}
+
+function renderChat(msgs){
+  const box=document.getElementById('chat-box');
+  box.innerHTML=Object.values(msgs).map(m=>`<div class="chat-msg"><span class="who">${m.emoji} ${m.name}</span>: ${m.text}</div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+function renderAdminPlayers(players){
+  document.getElementById('admin-player-list').innerHTML=Object.values(players).map(p=>`
+    <div class="admin-row"><span>${p.emoji||''} ${p.name}</span><span class="money" style="font-size:14px;">🍓${(p.money||0).toLocaleString()}</span></div>`).join('');
+}
+
+function renderAdminItems(items){
+  const all=Object.entries(items);
+  const div=document.getElementById('admin-items-list');
+  if(!all.length){div.innerHTML='<p>등록된 상품 없음</p>';return;}
+  div.innerHTML=all.map(([id,item])=>`
+    <div class="admin-row">
+      <span>${getEmoji(item.seller)} ${item.seller} — ${item.name} (🍓${item.price})</span>
+      <button class="btn btn-danger btn-sm" onclick="adminDeleteItem('${id}')">삭제</button>
+    </div>`).join('');
+}
+
+function toggleAddForm(){
+  const f=document.getElementById('add-form');
+  f.style.display=f.style.display==='none'?'':'none';
+}
+
+function addItem(){
+  const name=document.getElementById('new-item-name').value.trim();
+  const price=parseInt(document.getElementById('new-item-price').value);
+  const desc=document.getElementById('new-item-desc').value.trim();
+  if(!name){showToast('상품명을 입력하세요');return;}
+  if(!price||price<1){showToast('가격을 입력하세요');return;}
+  db.ref('items').push({name,price,desc,seller:me.name,createdAt:Date.now()});
+  document.getElementById('new-item-name').value='';
+  document.getElementById('new-item-price').value='';
+  document.getElementById('new-item-desc').value='';
+  toggleAddForm();
+  showToast('상품 등록 완료!','#2e7d32');
+}
+
+function deleteItem(id){ db.ref('items/'+id).remove(); showToast('삭제했어요'); }
+
+async function buyItem(id,seller,price,itemName){
+  if(seller===me.name){showToast('내 상품은 살 수 없어요');return;}
+  const mySnap=await db.ref('players/'+me.name+'/money').once('value');
+  const myMoney=mySnap.val()||0;
+  if(myMoney<price){showToast('🍓코인이 부족해요!');return;}
+  const selSnap=await db.ref('players/'+seller+'/money').once('value');
+  await db.ref().update({
+    ['players/'+me.name+'/money']:myMoney-price,
+    ['players/'+seller+'/money']:(selSnap.val()||0)+price,
+    ['items/'+id]:null
+  });
+  db.ref('sales').push({buyer:me.name,seller,item:itemName,price,at:Date.now()});
+  db.ref('chat').push({name:'🍓마켓',emoji:'',text:`${me.emoji}${me.name}님이 ${getEmoji(seller)}${seller}님의 [${itemName}]을 🍓${price.toLocaleString()}에 구매!`,at:Date.now()});
+  showToast('구매 완료!','#2e7d32');
+}
+
+function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const text=inp.value.trim();
+  if(!text)return;
+  inp.value='';
+  db.ref('chat').push({name:me.name,emoji:me.emoji,text,at:Date.now()});
+}
+
+async function adminGiveCoin(){
+  const target=document.getElementById('admin-target').value;
+  const amount=parseInt(document.getElementById('admin-amount').value);
+  const reason=document.getElementById('admin-reason').value.trim()||'관리자 지급';
+  if(!target){showToast('대상을 선택하세요');return;}
+  if(!amount){showToast('금액을 입력하세요');return;}
+  const targets=target==='ALL'?['도겸','줄리','제이','코코','도은']:[target];
+  for(const t of targets){
+    const snap=await db.ref('players/'+t+'/money').once('value');
+    await db.ref('players/'+t+'/money').set(Math.max(0,(snap.val()||0)+amount));
+  }
+  db.ref('chat').push({name:'🍓마켓',emoji:'',text:`[관리자] ${target}에게 🍓${amount>0?'+':''}${amount} (${reason})`,at:Date.now()});
+  showToast((amount>0?'지급':'차감')+' 완료!','#2e7d32');
+  document.getElementById('admin-amount').value='';
+  document.getElementById('admin-reason').value='';
+}
+
+function adminDeleteItem(id){ db.ref('items/'+id).remove(); showToast('삭제 완료'); }
+
+async function adminReset(){
+  if(!confirm('정말 전체 초기화할까요? 모든 데이터가 사라져요!'))return;
+  await db.ref('items').remove();
+  await db.ref('sales').remove();
+  await db.ref('chat').remove();
+  for(const p of ['도겸','줄리','제이','코코','도은']){
+    await db.ref('players/'+p+'/money').set(INIT_MONEY);
+  }
+  showToast('초기화 완료','#854F0B');
+}
+
+function switchTab(name){
+  ['market','myshop','chat','admin'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===name);
+    const c=document.getElementById('tab-'+t+'-content');
+    if(c)c.style.display=t===name?'':'none';
+  });
+}
+</script>
+</body>
+</html>
