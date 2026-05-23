@@ -34,13 +34,14 @@
 
 body {
   font-family: 'Nanum Gothic', sans-serif;
-  background: var(--bg) !important;
-  color: var(--text) !important;
+  background: #FFFDF0 !important;
+  color: #3D2B1F !important;
   min-height: 100vh;
   overflow-x: hidden;
-  color-scheme: light !important;
+  color-scheme: light only !important;
 }
-* { color-scheme: light !important; }
+* { color-scheme: light only !important; }
+html { background: #FFFDF0 !important; }
 
 /* ===== 배경 장식 ===== */
 body::before {
@@ -1229,15 +1230,10 @@ body::before {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-<div id="splash-screen" style="position:fixed;inset:0;background:#FFFDF0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:12px;">
-  <div style="font-size:3rem">🤝</div>
-  <div style="font-family:'Jua',sans-serif;font-size:1.5rem;color:#FF8C00">우리끼리</div>
-  <div style="width:40px;height:40px;border:4px solid #FFE4A0;border-top-color:#FF8C00;border-radius:50%;animation:spin .8s linear infinite"></div>
-</div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
 
 <!-- ===== 로그인 화면 ===== -->
-<div id="login-screen" style="display:none">
+<div id="login-screen">
   <div class="login-box">
     <div class="login-logo">🍬 우리끼리</div>
     <div class="login-sub">비밀번호를 입력하면 자동으로 로그인돼요!</div>
@@ -2033,7 +2029,6 @@ function tryLogin() {
 
 function loginAs(account) {
   currentUser = account;
-  const sp = document.getElementById('splash-screen'); if(sp) sp.style.display='none';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 
@@ -3507,10 +3502,6 @@ window.addEventListener('load', () => {
 
   // 자동 로그인 확인
   // 스플래시 숨기기 (최대 2초)
-  const splash = document.getElementById('splash-screen');
-  const hideSplash = () => { if(splash) splash.style.display = 'none'; };
-  setTimeout(hideSplash, 2000); // 최대 2초 후 강제 제거
-
   const autoId = localStorage.getItem('bk_autologin');
   if (autoId) {
     const acc = ACCOUNTS.find(a => a.id === autoId);
@@ -3520,7 +3511,6 @@ window.addEventListener('load', () => {
     }
   }
 
-  hideSplash();
   document.getElementById('login-screen').style.display = 'flex';
 });
 
